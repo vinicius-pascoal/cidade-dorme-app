@@ -15,7 +15,7 @@ export default function Home() {
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <Image
-          src="/images/backgrounds/night.png"
+          src="/images/backgrounds/nightNew.png"
           alt="Fundo noturno"
           fill
           className="object-cover"
