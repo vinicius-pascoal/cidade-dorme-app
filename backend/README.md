@@ -31,8 +31,12 @@ Variáveis necessárias:
 
 ### Desenvolvimento
 ```bash
+npm install
 npm run dev
 ```
+
+Servidor disponível em: http://localhost:3001  
+**Documentação Swagger**: http://localhost:3001/api-docs
 
 ### Produção
 ```bash
@@ -59,6 +63,10 @@ src/
 ```
 
 ## 🔌 API Endpoints
+
+Veja a **documentação interativa completa** em: `http://localhost:3001/api-docs`
+
+### Resumo dos Endpoints
 
 - `GET /health` - Health check
 - `POST /api/game/create` - Criar novo jogo
