@@ -1,12 +1,20 @@
+import dotenv from 'dotenv';
+
+// Carrega variáveis de ambiente PRIMEIRO
+dotenv.config();
+
+// Log para debug
+console.log('🔧 Variáveis de ambiente carregadas:');
+console.log('   PORT:', process.env.PORT || '3001');
+console.log('   NODE_ENV:', process.env.NODE_ENV || 'development');
+console.log('   ABLY_API_KEY:', process.env.ABLY_API_KEY ? '✅ Configurada' : '❌ Não encontrada');
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
 import gameRoutes from './routes/game.routes';
 import { errorHandler } from './middleware/errorHandler';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;

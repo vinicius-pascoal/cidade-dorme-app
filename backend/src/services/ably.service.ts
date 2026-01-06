@@ -6,7 +6,7 @@ export class AblyService {
 
   constructor() {
     const apiKey = process.env.ABLY_API_KEY;
-    
+
     if (!apiKey) {
       console.warn('⚠️  ABLY_API_KEY não configurada - Serviço de realtime desabilitado');
       this.client = null;
@@ -23,7 +23,7 @@ export class AblyService {
       console.log(`[Ably Desabilitado] ${eventType} no jogo ${gameId}`);
       return;
     }
-    
+
     const channel = this.client.channels.get(`game:${gameId}`);
     await channel.publish(eventType, data);
   }
@@ -33,7 +33,7 @@ export class AblyService {
       console.log(`[Ably Desabilitado] ${eventType} para jogador ${playerId}`);
       return;
     }
-    
+
     const channel = this.client.channels.get(`game:${gameId}:player:${playerId}`);
     await channel.publish(eventType, data);
   }
