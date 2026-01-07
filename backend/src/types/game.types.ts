@@ -43,6 +43,7 @@ export enum NightActionType {
   SEER_REVEAL = 'SEER_REVEAL',
   WITCH_HEAL = 'WITCH_HEAL',
   WITCH_KILL = 'WITCH_KILL',
+  SKIP = 'SKIP',
 }
 
 export interface Player {

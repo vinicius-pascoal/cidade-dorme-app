@@ -184,6 +184,19 @@ export class GameService {
       playerId,
       actionType: action.actionType,
     });
+
+    // Verifica se todos os jogadores vivos realizaram uma ação
+    const alivePlayers = game.players.filter(p => p.isAlive);
+    const playersWhoActed = new Set(game.nightActions.map(a => a.playerId));
+
+    console.log(`[NIGHT ACTION] Jogadores vivos: ${alivePlayers.length}, Que agiram: ${playersWhoActed.size}`);
+    console.log(`[NIGHT ACTION] Ações registradas: ${game.nightActions.map(a => `${a.playerId}:${a.actionType}`).join(', ')}`);
+
+    if (alivePlayers.length === playersWhoActed.size) {
+      // Todos agiram, processar fim da noite automaticamente
+      console.log('[NIGHT ACTION] Todos os jogadores realizaram suas ações. Processando fim da noite...');
+      await this.processNightEnd(gameId);
+    }
   }
 
   /**
@@ -262,6 +275,18 @@ export class GameService {
       voterId,
       votingStatus: this.votingService.getVotingStatus(game),
     });
+
+    // Verifica se todos os jogadores vivos votaram
+    const alivePlayers = game.players.filter(p => p.isAlive);
+    const playersWhoVoted = game.players.filter(p => p.isAlive && p.votedFor !== null && p.votedFor !== undefined);
+
+    console.log(`[VOTING] Jogadores vivos: ${alivePlayers.length}, Que votaram: ${playersWhoVoted.length}`);
+
+    if (this.phaseManager.areAllVotesCast(game)) {
+      // Todos votaram, processar fim da votação automaticamente
+      console.log('[VOTING] Todos os jogadores votaram. Processando fim da votação...');
+      await this.processVotingEnd(gameId);
+    }
   }
 
   /**

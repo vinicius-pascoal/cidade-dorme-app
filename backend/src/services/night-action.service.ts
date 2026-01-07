@@ -31,7 +31,7 @@ export class NightActionService {
 
     // Remove ação anterior do mesmo jogador (se existir)
     game.nightActions = game.nightActions.filter(
-      a => a.playerId !== action.playerId || a.actionType !== action.actionType
+      a => a.playerId !== action.playerId
     );
 
     // Adiciona nova ação
@@ -199,6 +199,11 @@ export class NightActionService {
    * Valida se a ação é apropriada para o papel
    */
   private validateActionForRole(player: Player, actionType: NightActionType): void {
+    // SKIP é permitido para qualquer papel
+    if (actionType === NightActionType.SKIP) {
+      return;
+    }
+
     const validActions: Record<Role, NightActionType[]> = {
       [Role.ASSASSINO]: [NightActionType.ASSASSIN_KILL],
       [Role.LIDER_ASSASSINOS]: [NightActionType.ASSASSIN_KILL],

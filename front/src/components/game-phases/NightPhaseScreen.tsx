@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { Game, Role } from '@/types/game.types';
 import { RoleCard } from '../RoleCard';
 import { PlayerSelectionModal } from '../PlayerSelectionModal';
+import { gameService } from '@/services/game.service';
 
 interface NightPhaseScreenProps {
   game: Game;
@@ -113,16 +114,49 @@ export function NightPhaseScreen({ game, playerId }: NightPhaseScreenProps) {
       setShowTargetModal(true);
     } else {
       // Ação sem alvo (ex: pular)
-      console.log(`Executou ação: ${action.id}`);
-      setActionPerformed({ actionName: action.name });
-      setHasActed(true);
+      handleSkipAction(action);
     }
   }, []);
 
-  const handleConfirmTarget = useCallback(() => {
-    if (pendingAction && selectedTarget) {
+  const handleSkipAction = useCallback(async (action: NightAction) => {
+    if (!playerId) return;
+
+    try {
+      // Skip envia uma ação SKIP para o backend
+      await gameService.executeNightAction(game.id, playerId, 'SKIP');
+      setActionPerformed({ actionName: action.name });
+      setHasActed(true);
+    } catch (error) {
+      console.error('Erro ao executar ação:', error);
+    }
+  }, [playerId, game.id]);
+
+  const mapActionIdToType = (actionId: string): string => {
+    const actionMap: Record<string, string> = {
+      'skip': 'SKIP',
+      'assassinate': 'ASSASSIN_KILL',
+      'heal': 'DOCTOR_SAVE',
+      'investigate': 'DETECTIVE_INVESTIGATE',
+      'reveal': 'SEER_REVEAL',
+      'kill': 'WITCH_KILL',
+    };
+    return actionMap[actionId] || actionId;
+  };
+
+  const handleConfirmTarget = useCallback(async () => {
+    if (!pendingAction || !selectedTarget || !playerId) return;
+
+    try {
       const targetPlayer = game.players.find(p => p.id === selectedTarget);
-      console.log(`Executou ação: ${pendingAction.id} em ${selectedTarget}`);
+      const actionType = mapActionIdToType(pendingAction.id);
+
+      await gameService.executeNightAction(
+        game.id,
+        playerId,
+        actionType,
+        selectedTarget
+      );
+
       setActionPerformed({
         actionName: pendingAction.name,
         targetName: targetPlayer?.name
@@ -131,8 +165,10 @@ export function NightPhaseScreen({ game, playerId }: NightPhaseScreenProps) {
       setPendingAction(null);
       setSelectedTarget(null);
       setHasActed(true);
+    } catch (error) {
+      console.error('Erro ao executar ação com alvo:', error);
     }
-  }, [pendingAction, selectedTarget, game.players]);
+  }, [pendingAction, selectedTarget, playerId, game]);
 
   const nightActions = getNightActions();
   const aliveOtherPlayers = game.players.filter(p => p.isAlive && p.id !== playerId);

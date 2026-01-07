@@ -28,4 +28,19 @@ export const gameService = {
   async startGame(gameId: string, hostId: string): Promise<GameStartResponse> {
     return apiClient.post<GameStartResponse>(`/${gameId}/start`, { hostId });
   },
+
+  async executeNightAction(gameId: string, playerId: string, actionType: string, targetId?: string): Promise<{ success: boolean }> {
+    return apiClient.post<{ success: boolean }>(`/${gameId}/night-action`, {
+      playerId,
+      actionType,
+      targetId,
+    });
+  },
+
+  async castVote(gameId: string, voterId: string, targetId: string): Promise<{ success: boolean }> {
+    return apiClient.post<{ success: boolean }>(`/${gameId}/vote`, {
+      voterId,
+      targetId,
+    });
+  },
 };
