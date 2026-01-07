@@ -1,24 +1,31 @@
 import { apiClient } from '@/lib/api-client';
-import { Game, Player } from '@/types/game.types';
+import { Game } from '@/types/game.types';
+
+type JoinResponse = { game: Game; playerId: string };
+type GameStartResponse = { success: boolean; game: Game };
 
 export const gameService = {
   async createGame(hostName: string): Promise<Game> {
-    return apiClient.post<Game>('/games', { hostName });
+    return apiClient.post<Game>('/create', { hostName });
   },
 
-  async joinGame(gameCode: string, playerName: string): Promise<{ game: Game; player: Player }> {
-    return apiClient.post(`/games/${gameCode}/join`, { playerName });
+  async joinGame(code: string, playerName: string): Promise<JoinResponse> {
+    return apiClient.post<JoinResponse>('/join', { code, playerName });
   },
 
   async getGame(gameId: string): Promise<Game> {
-    return apiClient.get<Game>(`/games/${gameId}`);
+    return apiClient.get<Game>(`/${gameId}`);
   },
 
-  async startGame(gameId: string): Promise<Game> {
-    return apiClient.post<Game>(`/games/${gameId}/start`);
+  async getGameForPlayer(gameId: string, playerId: string): Promise<{
+    game: Game;
+    player: { id: string; name: string; role?: string; team?: string; isAlive: boolean; isHost: boolean };
+    gameStats: unknown;
+  }> {
+    return apiClient.get(`/${gameId}/player/${playerId}`);
   },
 
-  async leaveGame(gameId: string, playerId: string): Promise<void> {
-    return apiClient.delete(`/games/${gameId}/players/${playerId}`);
+  async startGame(gameId: string, hostId: string): Promise<GameStartResponse> {
+    return apiClient.post<GameStartResponse>(`/${gameId}/start`, { hostId });
   },
 };
