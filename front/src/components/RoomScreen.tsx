@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Game } from '@/types/game.types';
 import { QRCode } from './QRCode';
 import { Modal } from './Modal';
 import { useGamePolling } from '@/hooks/useGamePolling';
+import { gameService } from '@/services/game.service';
 
 interface RoomScreenProps {
   game: Game;
@@ -15,9 +16,10 @@ interface RoomScreenProps {
 export function RoomScreen({ game: initialGame, playerId, onBack }: RoomScreenProps) {
   const [showQR, setShowQR] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
 
   // Usar polling para atualizar os jogadores
-  const { game: updatedGame, isLoading } = useGamePolling({
+  const { game: updatedGame, isLoading, refetch } = useGamePolling({
     gameId: initialGame.id,
     intervalMs: 2000,
     enabled: true,
@@ -25,6 +27,10 @@ export function RoomScreen({ game: initialGame, playerId, onBack }: RoomScreenPr
 
   // Usar o jogo atualizado, ou o inicial se não houver atualização ainda
   const game = updatedGame || initialGame;
+
+  const isHost = playerId === game.hostId;
+  const minPlayersToStart = 10;
+  const maxPlayersToStart = 12;
 
   const handleCopyCode = async () => {
     try {
@@ -36,7 +42,19 @@ export function RoomScreen({ game: initialGame, playerId, onBack }: RoomScreenPr
     }
   };
 
-  const isHost = playerId === game.hostId;
+  const handleStartGame = useCallback(async () => {
+    if (!isHost || !playerId) return;
+    setIsStarting(true);
+    try {
+      await gameService.startGame(game.id, playerId);
+      // Refetch para obter o estado atualizado
+      await refetch();
+    } catch (error) {
+      console.error('Erro ao iniciar jogo:', error);
+    } finally {
+      setIsStarting(false);
+    }
+  }, [game.id, isHost, playerId, refetch]);
 
   return (
     <>
@@ -89,11 +107,24 @@ export function RoomScreen({ game: initialGame, playerId, onBack }: RoomScreenPr
           </div>
         </div>
 
+        {/* Aviso de mínimo de jogadores */}
+        {isHost && (game.players.length < minPlayersToStart || game.players.length > maxPlayersToStart) && (
+          <div className="bg-yellow-900/30 border border-yellow-600/50 rounded-xl p-4 mb-6">
+            <p className="text-yellow-200 text-sm text-center">
+              Você precisa de {minPlayersToStart} a {maxPlayersToStart} jogadores para começar. Atualmente: {game.players.length}
+            </p>
+          </div>
+        )}
+
         {/* Ações */}
         <div className="space-y-3">
           {isHost && (
-            <button className="w-full py-4 px-6 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              🎮 Iniciar Jogo
+            <button
+              onClick={handleStartGame}
+              disabled={game.players.length < minPlayersToStart || game.players.length > maxPlayersToStart || isStarting}
+              className="w-full py-4 px-6 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-600"
+            >
+              {isStarting ? '⏳ Iniciando...' : '🎮 Iniciar Jogo'}
             </button>
           )}
           <button

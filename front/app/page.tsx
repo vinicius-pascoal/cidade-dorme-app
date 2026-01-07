@@ -6,10 +6,33 @@ import { MenuScreen } from '@/components/MenuScreen';
 import { CreateScreen } from '@/components/CreateScreen';
 import { JoinScreen } from '@/components/JoinScreen';
 import { RoomScreen } from '@/components/RoomScreen';
+import { GameScreen } from '@/components/GameScreen';
 import { MessageAlert } from '@/components/MessageAlert';
+import { GameStatus } from '@/types/game.types';
+import { useGamePolling } from '@/hooks/useGamePolling';
 
 function GameContent() {
   const { screen, game, playerId, error, info, resetGame } = useGame();
+
+  // Usar polling para atualizar o status do jogo quando estiver em uma sala
+  const { game: updatedGame } = useGamePolling({
+    gameId: game?.id || '',
+    intervalMs: 1000,
+    enabled: screen === 'room' && game !== null,
+  });
+
+  const currentGame = updatedGame || game;
+
+  // Se o jogo começou, mudar para a tela de gameplay
+  if (screen === 'room' && currentGame && currentGame.status === GameStatus.PLAYING) {
+    return (
+      <GameScreen
+        game={currentGame}
+        playerId={playerId}
+        onGameEnd={resetGame}
+      />
+    );
+  }
 
   return (
     <>
@@ -17,9 +40,9 @@ function GameContent() {
       {screen === 'menu' && <MenuScreen />}
       {screen === 'create' && <CreateScreen />}
       {screen === 'join' && <JoinScreen />}
-      {screen === 'room' && game && (
+      {screen === 'room' && currentGame && (
         <RoomScreen
-          game={game}
+          game={currentGame}
           playerId={playerId}
           onBack={resetGame}
         />
