@@ -1,50 +1,231 @@
 'use client';
 
-import { Game } from '@/types/game.types';
+import { useState, useCallback } from 'react';
+import { Game, Role } from '@/types/game.types';
+import { RoleCard } from '../RoleCard';
+import { PlayerSelectionModal } from '../PlayerSelectionModal';
 
 interface NightPhaseScreenProps {
   game: Game;
   playerId: string | null;
 }
 
+interface NightAction {
+  id: string;
+  name: string;
+  description: string;
+  requiresTarget: boolean;
+  icon: string;
+}
+
 export function NightPhaseScreen({ game, playerId }: NightPhaseScreenProps) {
+  const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
+  const [showTargetModal, setShowTargetModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<NightAction | null>(null);
+  const [hasActed, setHasActed] = useState(false);
+  const [actionPerformed, setActionPerformed] = useState<{ actionName: string; targetName?: string } | null>(null);
+
   const currentPlayer = game.players.find(p => p.id === playerId);
 
-  return (
-    <div className="w-full bg-slate-900/90 backdrop-blur-sm rounded-3xl p-8 shadow-2xl">
-      <h2 className="text-3xl font-bold text-white mb-6 text-center">🌙 Noite</h2>
+  const getNightActions = (): NightAction[] => {
+    const actions: NightAction[] = [
+      {
+        id: 'skip',
+        name: 'Não fazer nada',
+        description: 'Passe sua vez esta noite',
+        requiresTarget: false,
+        icon: '😴',
+      },
+    ];
 
-      <div className="bg-slate-800 rounded-2xl p-6 mb-6">
-        <p className="text-gray-300 text-center mb-4">
-          {currentPlayer?.role ? `Você é: ${currentPlayer.role}` : 'Você é um Cidadão'}
-        </p>
+    if (!currentPlayer?.role) return actions;
 
-        {currentPlayer?.role && !['CIDADAO'].includes(currentPlayer.role) ? (
-          <div className="space-y-3">
-            <p className="text-white font-semibold text-center">Escolha sua ação:</p>
-            {/* Ações específicas do personagem */}
-            <button className="w-full py-3 px-6 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-colors">
-              Executar Ação
-            </button>
-          </div>
-        ) : (
-          <p className="text-gray-400 text-center">Aguarde a noite passar...</p>
-        )}
-      </div>
+    const roleActions: Record<string, NightAction[]> = {
+      [Role.ASSASSINO]: [
+        {
+          id: 'assassinate',
+          name: 'Assassinar',
+          description: 'Elimine um cidadão durante a noite',
+          requiresTarget: true,
+          icon: '🗡️',
+        },
+      ],
+      [Role.LIDER_ASSASSINOS]: [
+        {
+          id: 'assassinate',
+          name: 'Assassinar',
+          description: 'Elimine um cidadão durante a noite',
+          requiresTarget: true,
+          icon: '🗡️',
+        },
+      ],
+      [Role.MEDICO]: [
+        {
+          id: 'heal',
+          name: 'Curar',
+          description: 'Proteja um jogador de ser assassinado',
+          requiresTarget: true,
+          icon: '❤️',
+        },
+      ],
+      [Role.DETETIVE]: [
+        {
+          id: 'investigate',
+          name: 'Investigar',
+          description: 'Descubra o papel de um jogador',
+          requiresTarget: true,
+          icon: '🔍',
+        },
+      ],
+      [Role.VIDENTE]: [
+        {
+          id: 'reveal',
+          name: 'Revelar',
+          description: 'Veja o papel de um jogador',
+          requiresTarget: true,
+          icon: '👁️',
+        },
+      ],
+      [Role.BRUXA]: [
+        {
+          id: 'heal',
+          name: 'Curar',
+          description: 'Salve alguém de ser eliminado',
+          requiresTarget: true,
+          icon: '🧙‍♀️',
+        },
+        {
+          id: 'kill',
+          name: 'Envenenar',
+          description: 'Elimine alguém',
+          requiresTarget: true,
+          icon: '☠️',
+        },
+      ],
+    };
 
-      <div className="bg-slate-800 rounded-2xl p-6">
-        <h3 className="text-lg font-bold text-white mb-4">Jogadores Vivos</h3>
-        <div className="space-y-2 max-h-48 overflow-y-auto">
-          {game.players
-            .filter(p => p.isAlive)
-            .map(player => (
-              <div key={player.id} className="flex items-center justify-between bg-slate-700 p-3 rounded-lg">
-                <span className="text-white">{player.name}</span>
-                {player.id === playerId && <span className="text-purple-400 text-xs font-bold">VOCÊ</span>}
+    return [...actions, ...(roleActions[currentPlayer.role] || [])];
+  };
+
+  const handleActionClick = useCallback((action: NightAction) => {
+    if (action.requiresTarget) {
+      setPendingAction(action);
+      setShowTargetModal(true);
+    } else {
+      // Ação sem alvo (ex: pular)
+      console.log(`Executou ação: ${action.id}`);
+      setActionPerformed({ actionName: action.name });
+      setHasActed(true);
+    }
+  }, []);
+
+  const handleConfirmTarget = useCallback(() => {
+    if (pendingAction && selectedTarget) {
+      const targetPlayer = game.players.find(p => p.id === selectedTarget);
+      console.log(`Executou ação: ${pendingAction.id} em ${selectedTarget}`);
+      setActionPerformed({
+        actionName: pendingAction.name,
+        targetName: targetPlayer?.name
+      });
+      setShowTargetModal(false);
+      setPendingAction(null);
+      setSelectedTarget(null);
+      setHasActed(true);
+    }
+  }, [pendingAction, selectedTarget, game.players]);
+
+  const nightActions = getNightActions();
+  const aliveOtherPlayers = game.players.filter(p => p.isAlive && p.id !== playerId);
+
+  // Se o jogador já agiu, mostrar tela de aguardamento
+  if (hasActed) {
+    return (
+      <div className="w-full space-y-6">
+        {/* Sua Role */}
+        <RoleCard role={currentPlayer?.role} />
+
+        {/* Tela de Aguardamento */}
+        <div className="bg-gradient-to-br from-slate-900 to-slate-800 backdrop-blur-sm rounded-3xl p-12 shadow-2xl border-2 border-purple-500/30">
+          <div className="text-center space-y-6">
+            {/* Ícone de Checkmark */}
+            <div className="text-7xl mb-4">✅</div>
+
+            {/* Mensagem de Ação Realizada */}
+            <div>
+              <h3 className="text-3xl font-bold text-green-400 mb-2">Ação Realizada!</h3>
+              <p className="text-white text-lg">
+                {actionPerformed?.targetName
+                  ? `${actionPerformed.actionName} em ${actionPerformed.targetName}`
+                  : actionPerformed?.actionName
+                }
+              </p>
+            </div>
+
+            {/* Aguardando */}
+            <div className="mt-8">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
               </div>
-            ))}
+              <p className="text-gray-300 text-xl font-semibold">
+                Aguardando os outros jogadores...
+              </p>
+              <p className="text-gray-400 text-sm mt-2">
+                Não feche esta página
+              </p>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="w-full space-y-6">
+        {/* Sua Role */}
+        <RoleCard role={currentPlayer?.role} />
+
+        {/* Ações Disponíveis */}
+        <div className="bg-slate-900/90 backdrop-blur-sm rounded-3xl p-8 shadow-2xl">
+          <h3 className="text-2xl font-bold text-white mb-6 text-center">🌙 Escolha sua ação</h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {nightActions.map(action => (
+              <button
+                key={action.id}
+                onClick={() => handleActionClick(action)}
+                className="bg-slate-800 hover:bg-slate-700 border-2 border-slate-600 hover:border-purple-500 rounded-2xl p-6 transition-all transform hover:scale-105 active:scale-95"
+              >
+                <div className="text-4xl mb-3">{action.icon}</div>
+                <p className="text-white font-bold text-lg mb-2">{action.name}</p>
+                <p className="text-gray-400 text-sm">{action.description}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Dica */}
+        <div className="text-center text-gray-400 text-sm">
+          Escolha sua ação rapidamente!
+        </div>
+      </div>
+
+      {/* Modal de Seleção de Jogador */}
+      <PlayerSelectionModal
+        isOpen={showTargetModal}
+        players={aliveOtherPlayers.map(p => ({ id: p.id, name: p.name }))}
+        selectedPlayerId={selectedTarget}
+        onSelect={setSelectedTarget}
+        onConfirm={handleConfirmTarget}
+        onCancel={() => {
+          setShowTargetModal(false);
+          setPendingAction(null);
+          setSelectedTarget(null);
+        }}
+        title={pendingAction ? `Selecione alvo para: ${pendingAction.name}` : 'Selecione um jogador'}
+      />
+    </>
   );
 }

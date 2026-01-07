@@ -19,7 +19,7 @@ export function RoomScreen({ game: initialGame, playerId, onBack }: RoomScreenPr
   const [isStarting, setIsStarting] = useState(false);
 
   // Usar polling para atualizar os jogadores
-  const { game: updatedGame, isLoading, refetch } = useGamePolling({
+  const { game: updatedGame, refetch } = useGamePolling({
     gameId: initialGame.id,
     intervalMs: 2000,
     enabled: true,
@@ -87,12 +87,6 @@ export function RoomScreen({ game: initialGame, playerId, onBack }: RoomScreenPr
         <div className="bg-slate-800 rounded-2xl p-6 mb-8">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-bold text-white">👥 Jogadores ({game.players.length})</h3>
-            {isLoading && (
-              <div className="inline-flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                <span className="text-xs text-gray-400">Atualizando...</span>
-              </div>
-            )}
           </div>
           <div className="space-y-3 max-h-40 overflow-y-auto">
             {game.players.map((player) => (

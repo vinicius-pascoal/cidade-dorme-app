@@ -1,6 +1,6 @@
 'use client';
 
-import { Game, GamePhase, GameStatus } from '@/types/game.types';
+import { Game, GamePhase } from '@/types/game.types';
 import { NightPhaseScreen } from './game-phases/NightPhaseScreen';
 import { DayPhaseScreen } from './game-phases/DayPhaseScreen';
 import { VotingPhaseScreen } from './game-phases/VotingPhaseScreen';
@@ -45,12 +45,6 @@ export function GameScreen({ game, playerId, onGameEnd }: GameScreenProps) {
           <div>
             <p className="text-xs uppercase text-gray-400 tracking-wide">Fase</p>
             <p className="text-lg font-bold text-purple-400">{game.phase}</p>
-          </div>
-          <div>
-            <p className="text-xs uppercase text-gray-400 tracking-wide">Jogadores Vivos</p>
-            <p className="text-2xl font-bold text-emerald-400">
-              {game.players.filter(p => p.isAlive).length}/{game.players.length}
-            </p>
           </div>
         </div>
       </div>

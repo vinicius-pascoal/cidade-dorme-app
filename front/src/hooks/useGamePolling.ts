@@ -16,7 +16,6 @@ export function useGamePolling({
   enabled = true,
 }: UseGamePollingOptions) {
   const [game, setGame] = useState<Game | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -34,21 +33,39 @@ export function useGamePolling({
   useEffect(() => {
     if (!enabled) return;
 
-    // Fetch imediatamente
-    setIsLoading(true);
-    fetchGame().finally(() => setIsLoading(false));
+    // Flag para rastrear se o componente está montado
+    let isMounted = true;
+
+    const fetchAndUpdate = async () => {
+      try {
+        const updatedGame = await gameService.getGame(gameId);
+        if (isMounted) {
+          setGame(updatedGame);
+          setError(null);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err instanceof Error ? err.message : 'Erro ao atualizar sala');
+          console.error('Erro ao buscar sala:', err);
+        }
+      }
+    };
+
+    // Fetch imediatamente na montagem
+    fetchAndUpdate();
 
     // Configurar polling
     intervalRef.current = setInterval(() => {
-      fetchGame();
+      fetchAndUpdate();
     }, intervalMs);
 
     return () => {
+      isMounted = false;
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
     };
   }, [gameId, intervalMs, enabled, fetchGame]);
 
-  return { game, isLoading, error, refetch: fetchGame };
+  return { game, error, refetch: fetchGame };
 }
