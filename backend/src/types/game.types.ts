@@ -117,6 +117,9 @@ export interface Game {
   createdAt: Date;
   startedAt?: Date;
   endedAt?: Date;
+  // Controle de fase para sincronização de clientes
+  phaseStartedAt?: Date;
+  phaseEndsAt?: Date;
 }
 
 export interface InvestigationResult {

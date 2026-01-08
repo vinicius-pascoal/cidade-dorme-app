@@ -106,12 +106,12 @@ export class GameController {
         return res.status(400).json({ error: 'PlayerId e actionType são obrigatórios' });
       }
 
-      await this.gameService.performNightAction(gameId, playerId, {
+      const result = await this.gameService.performNightAction(gameId, playerId, {
         actionType,
         targetId,
       });
 
-      res.status(200).json({ success: true });
+      res.status(200).json({ success: true, result });
     } catch (error: any) {
       console.error('Erro ao realizar ação noturna:', error);
       res.status(400).json({ error: error.message || 'Erro ao realizar ação' });
@@ -147,8 +147,10 @@ export class GameController {
       await this.gameService.castVote(gameId, voterId, targetId);
       res.status(200).json({ success: true });
     } catch (error: any) {
-      console.error('Erro ao registrar voto:', error);
-      res.status(400).json({ error: error.message || 'Erro ao registrar voto' });
+      console.error('Erro ao registrar voto:', {
+        message: error?.message,
+      });
+      res.status(400).json({ error: error?.message || 'Erro ao registrar voto' });
     }
   };
 

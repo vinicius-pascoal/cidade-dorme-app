@@ -22,7 +22,17 @@ export class ApiClient {
       const response = await fetch(url, config);
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // Tenta extrair mensagem do backend
+        let message = `HTTP error! status: ${response.status}`;
+        try {
+          const data = await response.json();
+          if (data && typeof data.error === 'string') {
+            message = data.error;
+          }
+        } catch {
+          // ignore json parse error
+        }
+        throw new Error(message);
       }
 
       return await response.json();

@@ -31,7 +31,6 @@ export function GameLayout({ children }: GameLayoutProps) {
             <h1 className="text-5xl sm:text-6xl font-bold text-white mb-3 drop-shadow-2xl">
               Cidade Dorme
             </h1>
-            <p className="text-gray-200">Dedução social em tempo real</p>
           </div>
         </div>
 

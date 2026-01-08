@@ -24,7 +24,12 @@ export function NightPhaseScreen({ game, playerId }: NightPhaseScreenProps) {
   const [showTargetModal, setShowTargetModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<NightAction | null>(null);
   const [hasActed, setHasActed] = useState(false);
-  const [actionPerformed, setActionPerformed] = useState<{ actionName: string; targetName?: string } | null>(null);
+  const [actionPerformed, setActionPerformed] = useState<{
+    actionName: string;
+    targetName?: string;
+    investigationResult?: { targetName: string; isVillain: boolean };
+    seerResult?: { targetName: string; role: string };
+  } | null>(null);
 
   const currentPlayer = game.players.find(p => p.id === playerId);
 
@@ -123,8 +128,10 @@ export function NightPhaseScreen({ game, playerId }: NightPhaseScreenProps) {
 
     try {
       // Skip envia uma ação SKIP para o backend
-      await gameService.executeNightAction(game.id, playerId, 'SKIP');
-      setActionPerformed({ actionName: action.name });
+      const response = await gameService.executeNightAction(game.id, playerId, 'SKIP');
+      setActionPerformed({
+        actionName: action.name
+      });
       setHasActed(true);
     } catch (error) {
       console.error('Erro ao executar ação:', error);
@@ -150,17 +157,43 @@ export function NightPhaseScreen({ game, playerId }: NightPhaseScreenProps) {
       const targetPlayer = game.players.find(p => p.id === selectedTarget);
       const actionType = mapActionIdToType(pendingAction.id);
 
-      await gameService.executeNightAction(
+      const response = await gameService.executeNightAction(
         game.id,
         playerId,
         actionType,
         selectedTarget
       );
 
-      setActionPerformed({
+      const baseAction = {
         actionName: pendingAction.name,
         targetName: targetPlayer?.name
-      });
+      };
+
+      // Se houver resultado de investigação, adiciona à resposta
+      if (response.result?.investigationResult) {
+        setActionPerformed({
+          ...baseAction,
+          investigationResult: {
+            targetName: response.result.investigationResult.targetName,
+            isVillain: response.result.investigationResult.isVillain,
+          },
+        });
+      }
+      // Se houver resultado de vidente, adiciona à resposta
+      else if (response.result?.seerResult) {
+        setActionPerformed({
+          ...baseAction,
+          seerResult: {
+            targetName: response.result.seerResult.targetName,
+            role: response.result.seerResult.role,
+          },
+        });
+      }
+      // Caso padrão
+      else {
+        setActionPerformed(baseAction);
+      }
+
       setShowTargetModal(false);
       setPendingAction(null);
       setSelectedTarget(null);
@@ -195,6 +228,35 @@ export function NightPhaseScreen({ game, playerId }: NightPhaseScreenProps) {
                   : actionPerformed?.actionName
                 }
               </p>
+
+              {/* Resultado de Investigação */}
+              {actionPerformed?.investigationResult && (
+                <div className="mt-6 bg-blue-900/30 border-2 border-blue-500/50 rounded-2xl p-6">
+                  <p className="text-blue-200 font-semibold mb-2">🔍 Resultado da Investigação:</p>
+                  <p className="text-white text-lg font-bold mb-1">
+                    {actionPerformed.investigationResult.targetName}
+                  </p>
+                  <p className={`text-lg font-bold ${actionPerformed.investigationResult.isVillain
+                      ? 'text-red-400'
+                      : 'text-green-400'
+                    }`}>
+                    {actionPerformed.investigationResult.isVillain ? '⚠️ É um Vilão!' : '✅ É um Cidadão'}
+                  </p>
+                </div>
+              )}
+
+              {/* Resultado de Vidente */}
+              {actionPerformed?.seerResult && (
+                <div className="mt-6 bg-purple-900/30 border-2 border-purple-500/50 rounded-2xl p-6">
+                  <p className="text-purple-200 font-semibold mb-2">👁️ Papel Revelado:</p>
+                  <p className="text-white text-lg font-bold mb-1">
+                    {actionPerformed.seerResult.targetName}
+                  </p>
+                  <p className="text-purple-300 text-lg font-bold">
+                    {actionPerformed.seerResult.role}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Aguardando */}

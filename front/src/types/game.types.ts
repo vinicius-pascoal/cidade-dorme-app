@@ -52,6 +52,11 @@ export interface Game {
   startedAt?: string | Date;
   endedAt?: string | Date;
   winner?: Team | 'SUICIDA' | null;
+  // Campos para sincronização de fase via backend
+  phaseStartedAt?: string | Date;
+  phaseEndsAt?: string | Date;
+  // Informações resumidas para a UI do dia
+  lastNightDeaths?: string[];
 }
 
 export interface GameState {

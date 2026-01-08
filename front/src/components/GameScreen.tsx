@@ -1,6 +1,7 @@
 'use client';
 
 import { Game, GamePhase } from '@/types/game.types';
+import { useGamePolling } from '@/hooks/useGamePolling';
 import { NightPhaseScreen } from './game-phases/NightPhaseScreen';
 import { DayPhaseScreen } from './game-phases/DayPhaseScreen';
 import { VotingPhaseScreen } from './game-phases/VotingPhaseScreen';
@@ -12,7 +13,15 @@ interface GameScreenProps {
   onGameEnd: () => void;
 }
 
-export function GameScreen({ game, playerId, onGameEnd }: GameScreenProps) {
+export function GameScreen({ game: initialGame, playerId, onGameEnd }: GameScreenProps) {
+  // Polling durante o jogo para sincronizar fase e estado
+  const { game: updatedGame } = useGamePolling({
+    gameId: initialGame.id,
+    intervalMs: 1000,
+    enabled: true,
+  });
+  const game = updatedGame || initialGame;
+
   const renderPhaseScreen = () => {
     switch (game.phase) {
       case GamePhase.NIGHT:

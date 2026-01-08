@@ -29,8 +29,8 @@ export const gameService = {
     return apiClient.post<GameStartResponse>(`/${gameId}/start`, { hostId });
   },
 
-  async executeNightAction(gameId: string, playerId: string, actionType: string, targetId?: string): Promise<{ success: boolean }> {
-    return apiClient.post<{ success: boolean }>(`/${gameId}/night-action`, {
+  async executeNightAction(gameId: string, playerId: string, actionType: string, targetId?: string): Promise<{ success: boolean; result?: any }> {
+    return apiClient.post<{ success: boolean; result?: any }>(`/${gameId}/night-action`, {
       playerId,
       actionType,
       targetId,
@@ -41,6 +41,12 @@ export const gameService = {
     return apiClient.post<{ success: boolean }>(`/${gameId}/vote`, {
       voterId,
       targetId,
+    });
+  },
+
+  async advancePhase(gameId: string, hostId: string): Promise<{ success: boolean }> {
+    return apiClient.post<{ success: boolean }>(`/${gameId}/advance-phase`, {
+      hostId,
     });
   },
 };

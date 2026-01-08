@@ -1,6 +1,6 @@
 'use client';
 
-import { Game } from '@/types/game.types';
+import { Game, GamePhase } from '@/types/game.types';
 import { useState, useCallback } from 'react';
 import { gameService } from '@/services/game.service';
 
@@ -16,6 +16,11 @@ export function VotingPhaseScreen({ game, playerId }: VotingPhaseScreenProps) {
 
   const handleVote = useCallback(async (targetId: string) => {
     if (!playerId) return;
+    // Guarda extra: previne voto se backend ainda não está em votação
+    if (game.phase !== GamePhase.DAY_VOTING) {
+      console.warn('Tentativa de votar fora da fase de votação.');
+      return;
+    }
 
     try {
       setSelectedVote(targetId);
@@ -26,7 +31,7 @@ export function VotingPhaseScreen({ game, playerId }: VotingPhaseScreenProps) {
       console.error('Erro ao votar:', error);
       setSelectedVote(null);
     }
-  }, [playerId, game.id]);
+  }, [playerId, game.id, game.phase]);
 
   if (hasVoted) {
     const votedPlayer = game.players.find(p => p.id === votedFor);
@@ -34,7 +39,7 @@ export function VotingPhaseScreen({ game, playerId }: VotingPhaseScreenProps) {
       <div className="w-full bg-slate-900/90 backdrop-blur-sm rounded-3xl p-8 shadow-2xl">
         <h2 className="text-3xl font-bold text-white mb-6 text-center">🗳️ Votação</h2>
 
-        <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-12 shadow-2xl border-2 border-green-500/30">
+        <div className="bg-linear-to-br from-slate-900 to-slate-800 rounded-3xl p-12 shadow-2xl border-2 border-green-500/30">
           <div className="text-center space-y-6">
             {/* Ícone de Checkmark */}
             <div className="text-7xl mb-4">✅</div>
@@ -75,6 +80,9 @@ export function VotingPhaseScreen({ game, playerId }: VotingPhaseScreenProps) {
         <p className="text-yellow-200 text-center">
           Votem em quem vocês acham que é o assassino!
         </p>
+        {game.phase !== GamePhase.DAY_VOTING && (
+          <p className="text-yellow-300 text-center text-sm mt-2">Aguardando início da votação...</p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -88,6 +96,7 @@ export function VotingPhaseScreen({ game, playerId }: VotingPhaseScreenProps) {
                 ? 'bg-red-600 text-white border-2 border-red-400'
                 : 'bg-slate-700 text-white hover:bg-slate-600 border-2 border-transparent'
                 }`}
+              disabled={game.phase !== GamePhase.DAY_VOTING}
             >
               {selectedVote === player.id && '✓\n'}
               {player.name}

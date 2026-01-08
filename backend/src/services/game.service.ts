@@ -10,6 +10,7 @@ import {
   GameStatus,
   GamePhase,
   NightAction,
+  NightActionType,
   NightResult,
   VotingResult,
 } from '../types/game.types';
@@ -22,6 +23,10 @@ export class GameService {
   private nightActionService: NightActionService;
   private votingService: VotingService;
   private victoryService: VictoryConditionService;
+  // Duração da discussão (teste: 1 minuto)
+  private readonly DISCUSSION_DURATION_MS = 60 * 1000;
+  // Timers de discussão por jogo
+  private discussionTimers: Map<string, NodeJS.Timeout> = new Map();
 
   constructor() {
     this.ablyService = new AblyService();
@@ -30,6 +35,14 @@ export class GameService {
     this.nightActionService = new NightActionService();
     this.votingService = new VotingService();
     this.victoryService = new VictoryConditionService();
+  }
+
+  private clearDiscussionTimer(gameId: string) {
+    const t = this.discussionTimers.get(gameId);
+    if (t) {
+      clearTimeout(t);
+      this.discussionTimers.delete(gameId);
+    }
   }
 
   /**
@@ -161,7 +174,7 @@ export class GameService {
     gameId: string,
     playerId: string,
     action: Omit<NightAction, 'playerId' | 'timestamp'>
-  ): Promise<void> {
+  ): Promise<{ actionResult?: any; gameUpdated?: boolean }> {
     const game = this.games.get(gameId);
 
     if (!game) {
@@ -180,6 +193,43 @@ export class GameService {
 
     this.nightActionService.registerAction(game, nightAction);
 
+    // Prepara resultado imediato para o jogador
+    let actionResult: any = {
+      actionType: action.actionType,
+      success: true,
+    };
+
+    // Se for investigação, retorna o resultado imediatamente
+    if (action.actionType === NightActionType.DETECTIVE_INVESTIGATE && action.targetId) {
+      const target = game.players.find(p => p.id === action.targetId);
+      if (target) {
+        actionResult = {
+          ...actionResult,
+          investigationResult: {
+            targetId: target.id,
+            targetName: target.name,
+            isVillain: this.roleService.isVillain(target),
+          },
+        };
+      }
+    }
+
+    // Se for vidente revelar, retorna o resultado imediatamente
+    if (action.actionType === NightActionType.SEER_REVEAL && action.targetId) {
+      const target = game.players.find(p => p.id === action.targetId);
+      if (target && target.role) {
+        actionResult = {
+          ...actionResult,
+          seerResult: {
+            targetId: target.id,
+            targetName: target.name,
+            role: target.role,
+          },
+        };
+      }
+    }
+
+    // Publica evento de ação registrada
     await this.ablyService.publishGameEvent(game.id, 'night:action_registered', {
       playerId,
       actionType: action.actionType,
@@ -196,7 +246,10 @@ export class GameService {
       // Todos agiram, processar fim da noite automaticamente
       console.log('[NIGHT ACTION] Todos os jogadores realizaram suas ações. Processando fim da noite...');
       await this.processNightEnd(gameId);
+      return { actionResult, gameUpdated: true };
     }
+
+    return { actionResult, gameUpdated: false };
   }
 
   /**
@@ -218,6 +271,26 @@ export class GameService {
 
     // Transiciona para o dia
     this.phaseManager.transitionToDayDiscussion(game);
+    // Marca timestamps de fase e agenda mudança automática para votação
+    const now = new Date();
+    game.phaseStartedAt = now;
+    game.phaseEndsAt = new Date(now.getTime() + this.DISCUSSION_DURATION_MS);
+    // Limpa timer anterior e agenda novo
+    this.clearDiscussionTimer(game.id);
+    const timeout = setTimeout(async () => {
+      const g = this.games.get(game.id);
+      if (!g) return;
+      // Somente avança se continuar em discussão
+      if (g.phase === GamePhase.DAY_DISCUSSION) {
+        this.phaseManager.transitionToVoting(g);
+        await this.ablyService.publishGameEvent(g.id, 'phase:changed', {
+          phase: g.phase,
+          game: this.sanitizeGameForPublic(g),
+        });
+      }
+      this.clearDiscussionTimer(game.id);
+    }, this.DISCUSSION_DURATION_MS);
+    this.discussionTimers.set(game.id, timeout);
 
     // Verifica condições de vitória
     const victoryCheck = await this.phaseManager.processPhaseEnd(game);
@@ -266,7 +339,7 @@ export class GameService {
     }
 
     if (game.phase !== GamePhase.DAY_VOTING) {
-      throw new Error('Não está na fase de votação');
+      throw new Error(`Não está na fase de votação (fase atual: ${game.phase})`);
     }
 
     this.votingService.castVote(game, voterId, targetId);
@@ -300,7 +373,7 @@ export class GameService {
     }
 
     if (game.phase !== GamePhase.DAY_VOTING) {
-      throw new Error('Não está na fase de votação');
+      throw new Error(`Não está na fase de votação (fase atual: ${game.phase})`);
     }
 
     // Processa votação
@@ -349,6 +422,8 @@ export class GameService {
     if (currentPhase === GamePhase.NIGHT) {
       await this.processNightEnd(gameId);
     } else if (currentPhase === GamePhase.DAY_DISCUSSION) {
+      // Cancelar timer agendado ao avançar manualmente
+      this.clearDiscussionTimer(game.id);
       this.phaseManager.transitionToVoting(game);
       await this.ablyService.publishGameEvent(game.id, 'phase:changed', {
         phase: game.phase,
@@ -418,6 +493,12 @@ export class GameService {
       startedAt: game.startedAt,
       endedAt: game.endedAt,
       winner: game.winner,
+      phaseStartedAt: game.phaseStartedAt,
+      phaseEndsAt: game.phaseEndsAt,
+      // Expor apenas mortes da última noite para UI do dia
+      lastNightDeaths: game.nightResults.length > 0
+        ? (game.nightResults[game.nightResults.length - 1].finalDeaths || [])
+        : [],
     };
   }
 
